@@ -1,51 +1,37 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <stdio.h>
 
-#define BUFFER 10 // Definiert einen Pufferbereich von 1 Pixel
+#define BUFFER 1 // Definiert einen Pufferbereich von 1 Pixel
 
-bool isOutsideScreen(CGPoint location, CGRect screenBounds) {
-    bool outside = location.x < screenBounds.origin.x || location.x > CGRectGetMaxX(screenBounds) - BUFFER || location.y < screenBounds.origin.y || location.y > CGRectGetMaxY(screenBounds) - BUFFER;
-    if (outside) {
-        printf("Maus ist außerhalb des Bildschirms: (%f, %f)\n", location.x, location.y);
-    }
-    return outside;
+bool isNearRightEdge(CGPoint location, CGRect screenBounds) {
+    return location.x > CGRectGetMaxX(screenBounds) - BUFFER;
 }
 
-CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
-    if (type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged || type == kCGEventRightMouseDragged) {
-        CGPoint location = CGEventGetLocation(event);
-        printf("Maus bewegt zu: (%f, %f)\n", location.x, location.y);
+void* checkMousePosition(void* arg) {
+    while (true) {
+        CGPoint location = CGEventGetLocation(CGEventCreate(NULL));
         CGRect screenBounds = CGDisplayBounds(CGMainDisplayID());
 
-        if (isOutsideScreen(location, screenBounds)) {
-            // Setzen Sie die Mausposition zurück auf den Rand des Hauptbildschirms
-            CGPoint newLocation = CGPointMake(MIN(MAX(location.x, screenBounds.origin.x), CGRectGetMaxX(screenBounds) - BUFFER), MIN(MAX(location.y, screenBounds.origin.y), CGRectGetMaxY(screenBounds) - BUFFER));
+        if (isNearRightEdge(location, screenBounds)) {
+            CGPoint newLocation = CGPointMake(CGRectGetMaxX(screenBounds) - BUFFER, location.y);
             CGWarpMouseCursorPosition(newLocation);
-            printf("Mausposition korrigiert zu: (%f, %f)\n", newLocation.x, newLocation.y);
-            return NULL; // Verwerfen Sie das ursprüngliche Ereignis
         }
+
+        usleep(1000); // Warte 1ms vor dem nächsten Check
     }
 
-    return event;
+    return NULL;
 }
 
 int main(void) {
-    CFMachPortRef eventTap = CGEventTapCreate(kCGHIDEventTap, kCGHeadInsertEventTap, 0, kCGEventMaskForAllEvents, myCGEventCallback, NULL);
-
-    if (!eventTap) {
-        printf("Fehler beim Erstellen des Event Taps\n");
-        exit(1);
+    pthread_t thread;
+    if (pthread_create(&thread, NULL, checkMousePosition, NULL)) {
+        fprintf(stderr, "Fehler beim Erstellen des Threads\n");
+        return 1;
     }
 
-    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
-    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
-    CGEventTapEnable(eventTap, true);
-
-    printf("Event Tap erstellt und aktiviert\n");
-
-    CFRunLoopRun();
+    pthread_join(thread, NULL);
 
     return 0;
 }
