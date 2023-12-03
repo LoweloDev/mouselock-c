@@ -1,1 +1,1 @@
-also dieser Swift code der funktioniert zwar. Das PRoble mist dass mein Mauszeiger wenn man auf gewissen mäusen linksclick gedrückt hält oder zu schnell hintereinander aktionen ausführt herumteleportiert und somit unerwünschtes verhalten verursacht. Eine andere möglichkeit wäre nur wenn der Mauszeiger den bildschirm verlasen will es zu verhindern und nicht dauernd die position zu checken aber das hat dafür gesorgt dass der Mauszegier für ganz kurze zeit am Rand festgenagelt war. 
+
