@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define BUFFER 10 // Definiert einen Pufferbereich von 1 Pixel
+#define BUFFER 15 // Definiert einen Pufferbereich von 1 Pixel
 
 bool isOutsideScreen(CGPoint location, CGRect screenBounds) {
     return location.x < screenBounds.origin.x || location.x > CGRectGetMaxX(screenBounds) - BUFFER;
@@ -27,8 +27,6 @@ void* checkMousePosition(void* arg) {
             CGEventPost(kCGHIDEventTap, moveEvent);
             CFRelease(moveEvent);
         }
-
-        usleep(1000); // Warte 1ms vor dem nächsten Check
     }
 
     return NULL;
