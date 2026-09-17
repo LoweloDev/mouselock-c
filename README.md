@@ -93,6 +93,27 @@ For a separately attributed macOS permission entry, build a menu-bar app:
 python3 build_app.py /absolute/output/path/MouseLock\ HID.app
 ```
 
+Launch the packaged app through Finder or Launch Services so macOS evaluates
+the app's own permission entry:
+
+```sh
+open -a /absolute/output/path/MouseLock\ HID.app
+# Optional: capture startup/access/capture diagnostics (absolute log paths).
+open -a /absolute/output/path/MouseLock\ HID.app \
+  --stdout /absolute/path/mouselock.log --stderr /absolute/path/mouselock-error.log \
+  --args --arm --seconds 0
+```
+
+Quit an existing instance before changing its launch route; opening an already
+running app does not restart it. In a live test, directly executing the bundle's
+`Contents/MacOS/mouselock` from the development host returned `post_access=1`
+despite the app's enabled Accessibility entry. Launching the unchanged bundle
+through Launch Services returned both access states as `0` and immediately
+captured the foreground game. Check the launch route before resetting TCC.
+A running process or the startup `mode=enabled` message alone does not prove
+active capture: confirm granted access and a `captured bounds=...` log entry
+while League is in front. Switching away from League normally releases capture.
+
 Local ad-hoc rebuilds change the code hash. In testing, toggling an old enabled
 permission entry or adding the updated app again did **not** replace its old
 code requirement. If the app still reports denied access after a rebuild, quit
