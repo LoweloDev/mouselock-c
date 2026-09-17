@@ -9,81 +9,56 @@ you hold Command or switch to another app.
 mice are not supported. A short windowed/borderless test worked smoothly;
 longer play and other setups are not fully validated.
 
+**Known unresolved issue:** the test mouse twice stopped responding and disappeared
+from the Mac's USB device list after use. Whether MouseLock caused this is unknown;
+quitting did not restore it, and reconnecting only helped the first time. This
+release is for troubleshooting/experimentation, not validated for routine play.
+
 **[EZ setup](#ez-setup)** · **[Advanced guide](docs/ADVANCED.md)** ·
 **[Test results and limitations](VALIDATION.md)**
 
 ## EZ setup
 
-There is no ready-made app download yet. These steps build the app on your Mac;
-you can copy and paste the commands without editing code. You only need to do
-this setup once, then open the app normally before playing.
+### 1. Download and open
 
-### 1. Prepare your Mac
+1. Download **[MouseLock-HID-v0.3.0-macos-arm64.zip](https://github.com/LoweloDev/mouselock-c/releases/download/v0.3.0/MouseLock-HID-v0.3.0-macos-arm64.zip)**
+   from the [GitHub release](https://github.com/LoweloDev/mouselock-c/releases/tag/v0.3.0).
+   Choose the app ZIP under **Assets**, not GitHub's source-code archives.
+2. Double-click the ZIP and drag **MouseLock HID.app** into **Applications**.
+   Quit any older MouseLock copy first; keep only one installed copy.
+3. Open **MouseLock HID.app** from Applications.
 
-Connect the supported mouse **by USB cable**. Open **Terminal** using Spotlight
-(Command-Space, type `Terminal`, press Return).
+This download is for **Apple Silicon (M-series), macOS 12 or newer**. It was
+built and tested on macOS 26.6.2; older versions have not been tested. Intel Macs
+are not included in this download.
 
-Install Apple's Command Line Tools:
-
-```sh
-xcode-select --install
-```
-
-Complete the installation dialog before continuing. If Terminal says the tools
-are already installed, continue. Full Xcode is not required.
-
-Check that Python 3 is available:
-
-```sh
-python3 --version
-```
-
-If this prints `Python 3.x.x`, continue. If it is missing, install Python 3 using
-the [official macOS installer](https://www.python.org/downloads/macos/), reopen
-Terminal and check again.
-
-### 2. Build the app
-
-Copy this whole block into Terminal and press Return. Wait for it to finish:
-
-```sh
-git clone https://github.com/LoweloDev/mouselock-c.git "$HOME/Downloads/mouselock-c" &&
-cd "$HOME/Downloads/mouselock-c" &&
-mkdir -p "$HOME/Applications" &&
-python3 build_app.py "$HOME/Applications/MouseLock HID.app"
-```
-
-The build runs its checks and creates **MouseLock HID.app** in your user
-Applications folder. If a command fails, stop and check its error before
-continuing. If `mouselock-c` already exists in Downloads, use the
-[update instructions](docs/ADVANCED.md#updating-an-existing-installation).
-
-Open the app:
-
-```sh
-open -a "$HOME/Applications/MouseLock HID.app"
-```
+The app is locally signed, **not Apple-notarized**. If macOS blocks it as an
+unknown developer, try opening it once, then go to **System Settings → Privacy
+& Security → Open Anyway** and confirm only if you trust this download.
+See [Apple's instructions](https://support.apple.com/en-gb/102445).
 
 **No window opens.** Look for **HID ○** in the macOS menu bar at the top of the
 screen. Always open the app itself, not the executable inside its bundle.
+No Terminal, Python or developer tools are needed for this download.
+For a local build, use the [Advanced source setup](docs/ADVANCED.md#build-from-source).
 
-### 3. Allow the two macOS permissions
+### 2. Allow the two macOS permissions
 
 1. Open **System Settings → Privacy & Security → Accessibility**
    (German: **Datenschutz & Sicherheit → Bedienungshilfen**).
 2. Add **MouseLock HID.app** with the **+** button and enable its switch.
-   In the file picker, press **Command-Shift-G**, paste `~/Applications`,
+   In the file picker, press **Command-Shift-G**, paste `/Applications`,
    press Return and select the app. Unlock with Touch ID or your Mac password
    if macOS asks.
 3. Repeat in **Privacy & Security → Input Monitoring**
    (German: **Eingabeüberwachung**), enabling the **same app**.
-4. Quit MouseLock via **HID → Beenden**, then open it again with the command above.
+4. Quit MouseLock via **HID → Beenden**, then open it again from Applications.
 
 Accessibility lets MouseLock send the confined mouse input. Input Monitoring
 lets it read the physical mouse. MouseLock does not capture keyboard input.
 If macOS asks you to quit and reopen the app, do so.
 
-### 4. Play
+### 3. Play
 
 Start a **Practice Tool** game first and try quick movements and clicks along
 all four edges. **Borderless is recommended** for this version; the Dock can
@@ -105,7 +80,7 @@ actual League match is in front, not the launcher or desktop:
 The app's menu labels are currently German. After sleep or a session switch,
 use **MouseLock aktivieren** to resume. There is no automatic start at login:
 open **MouseLock HID.app** before your next session. In Finder, Command-Shift-G
-and `~/Applications` takes you to it.
+and `/Applications` takes you to it.
 
 ## If something does not work
 
