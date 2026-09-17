@@ -16,7 +16,15 @@ observing it; they did not confine button events together with movement. A click
 could therefore reach the desktop before the correction. The polling version on
 `main` also checks only the main display's horizontal limits, not all four edges
 of the actual game window. Faster polling does not make that sequence atomic;
-no fixed Quartz frequency ceiling has been established. The new backend:
+the high-level approach also has a documented practical polling-rate limit in
+the tested setup: [LoweloDev's upstream report](https://github.com/mxrlkn/mouselock/issues/17)
+identifies 250 Hz as the highest stable mouse polling rate, with jitter/jumps
+above it. [The implementation experiments](https://github.com/mxrlkn/mouselock/issues/17#issuecomment-1837467796)
+describe jitter from continuous repositioning and escape/sticking with edge-only
+correction; [another user](https://github.com/mxrlkn/mouselock/issues/17#issuecomment-1951406468)
+later confirmed the above-250-Hz failure on a Superlight 2. This is evidence for
+that approach and tested hardware, rather than a universal API callback ceiling.
+The new backend:
 
 1. Opens only the supported gaming mouse with `kIOHIDOptionsTypeSeizeDevice`,
    and only while the actual League game process is foreground.

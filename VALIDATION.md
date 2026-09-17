@@ -109,7 +109,13 @@ The initial passive comparison showed more HID callbacks than Quartz callbacks,
 but queried foreground state in its hot path and used an unvalidated Quartz
 timestamp conversion. Its exact latency figures are invalid and must not be
 used. The diagnostic now avoids the hot-path foreground query and omits the
-unvalidated timestamp subtraction. No fixed Quartz frequency limit is claimed.
+unvalidated timestamp subtraction. This limitation of the newer diagnostic does
+not invalidate the earlier practical polling-rate evidence:
+[upstream issue #17](https://github.com/mxrlkn/mouselock/issues/17) documents
+LoweloDev's highest stable mouse polling rate of 250 Hz with the original
+high-level approach, plus a later independent report of failure above 250 Hz on
+a Superlight 2. The issue establishes observed behavior for those configurations;
+it does not measure a universal maximum callback rate for every Quartz API.
 
 ## Pending
 
