@@ -78,6 +78,26 @@
 - Build, boundary/motion tests and static analysis passed. Long-session behavior
   remains to be assessed during normal play.
 
+## Additional observations, 2026-09-17
+
+- Launching the unchanged packaged app through Launch Services restored
+  `post_access=0`, `listen_access=0` and capture after a direct binary launch
+  from the development host returned `post_access=1`. The app's Accessibility
+  toggle was already on; no permission setting was changed for this comparison.
+- A later passive session/game-delivery comparison counted 169 mouse-button
+  downs targeted at League and 169 delivered to its process, with no recorded
+  other/unknown targets. Observed motion positions stayed within the game
+  window. This supports confinement for the observed intervals, not every
+  focus transition or button combination.
+- Intermittent champion position jumps and missed ability activations remain
+  unresolved. They also occurred while confinement stayed active; tabbing out
+  was not a necessary trigger. The last symptom change happened without a
+  helper/configuration change. These symptoms must not be claimed as fixed.
+- Separate passive keyboard checks observed all ten test R presses/releases
+  reaching the game process despite only six reported activations. Process
+  delivery does not establish game acceptance. No keyboard interception or
+  remapping was added; the diagnostic probes are not part of this repository.
+
 ## Not established by those checks
 
 A successful IOKit return code does not prove correct on-screen cursor
@@ -93,16 +113,12 @@ unvalidated timestamp subtraction. No fixed Quartz frequency limit is claimed.
 
 ## Pending
 
-- User verification of fast edge movements and outside-click prevention.
+- Broader regression coverage of fast edge movements and outside-click prevention.
 - Left/right/middle/side buttons, dragging, wheel and keyboard modifiers.
 - Camera edge scrolling and focus return with Command-Tab.
 - Desktop versus in-game perceived speed; default gain remains provisional.
-- Borderless and decorated window geometry, resize, display changes, sleep.
-- Routine-use behavior beyond a timed prototype.
-- Whether desktop stutter disappears with the helper stopped; process snapshots
-  showed load from WindowServer, League client and other apps and cannot assign
-  causality. Compare with the revised helper only after a clean baseline.
-- User reports dropped or delayed keyboard input on macOS, absent on Windows.
-  First establish whether it occurs with the helper off; no keyboard interception
-  or setting change has been implemented. User requested this investigation
-  after mouse confinement and smoothness are resolved.
+- Geometry during resize/display changes and sleep/resume.
+- Longer-session behavior, beyond the successful brief windowed/borderless trial.
+- Controlled performance comparison: the revised helper felt smooth, but the
+  contribution of individual batching/menu/geometry changes was not isolated.
+- Intermittent position jumps and missed ability activations, as noted above.

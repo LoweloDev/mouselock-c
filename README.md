@@ -11,9 +11,12 @@ remain unverified. See `VALIDATION.md` for the observations and limits.
 
 ## Why this backend
 
-The original attempts received too few high-level movement events to reliably
-pull the cursor back before a click escaped. Increasing a polling loop rate does
-not remove that race. The new backend:
+The original Quartz event-tap/polling attempts corrected cursor movement after
+observing it; they did not confine button events together with movement. A click
+could therefore reach the desktop before the correction. The polling version on
+`main` also checks only the main display's horizontal limits, not all four edges
+of the actual game window. Faster polling does not make that sequence atomic;
+no fixed Quartz frequency ceiling has been established. The new backend:
 
 1. Opens only the supported gaming mouse with `kIOHIDOptionsTypeSeizeDevice`,
    and only while the actual League game process is foreground.
