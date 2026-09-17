@@ -42,12 +42,32 @@
 - Revised app is packaged but left stopped. Its new ad-hoc signature may require
   macOS to renew the app's previously approved permissions before another trial.
 
+## Follow-up trial, 2026-09-17
+
+- User confirms the desktop is smooth again with the helper stopped.
+- Rebuilt app's stale TCC code requirements were confirmed in system logs.
+  Resetting only its Accessibility and ListenEvent entries, re-adding the app
+  in System Settings, and relaunching restored both access states to `0`.
+  Merely toggling or re-adding without resetting did not update the old hash.
+- Paused helper measured 0.1% CPU in a process snapshot. Active snapshots ranged
+  from 2.4% to 6.4%; these are observations, not a controlled performance benchmark.
+- Live borderless transition is now recorded: the same game window changed
+  from layer **0** to layer **1000**. The old layer-zero filter would reject it.
+  The revised helper retained capture and changed bounds from
+  `1921,63,3838,2001` to `1921,1,3838,2158`, with decoration changing from on to off.
+- The user confirmed the revised trial worked and felt completely smooth.
+  Speed remains undecided and needs longer gameplay. This confirms the brief
+  windowed/borderless trial, not every click combination or routine use.
+- At normal game exit, device release succeeded: 69,331 reports, 12,417 clamped
+  candidate positions, 18,330 output posts, zero reported API errors. The helper
+  was then terminated; no test or diagnosis process was left running.
+
 ## Not established by those checks
 
 A successful IOKit return code does not prove correct on-screen cursor
-confinement, camera scrolling, or click delivery. Only the user's limited
-windowed-mode success has been established in gameplay; neither borderless nor
-the revised backend should be called fixed from offline tests alone.
+confinement, camera scrolling, or click delivery. The user's short revised
+windowed/borderless trial succeeded, but routine use, all button combinations,
+and mouse-speed equivalence have not been established.
 
 The initial passive comparison showed more HID callbacks than Quartz callbacks,
 but queried foreground state in its hot path and used an unvalidated Quartz

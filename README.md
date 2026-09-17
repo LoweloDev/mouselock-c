@@ -2,10 +2,12 @@
 
 This branch preserves the original 2023 `main.c` experiments and adds a new,
 opt-in backend in `src/hid_guard.m` for the League of Legends Mac cursor escape
-problem. It is **not yet a verified fix**. The first physical test worked in
-windowed mode, failed after switching to borderless, and was accompanied by
-reported desktop/game stutter. The revised code below has passed offline tests
-but has not yet had its next physical gameplay test.
+problem. It is an **experimental backend with a successful short physical
+gameplay test**, not a broadly validated release. The first build worked in
+windowed mode but failed in borderless and was accompanied by reported stutter.
+On 2026-09-17, the user confirmed the revised build worked through the borderless
+test and felt smooth. Longer gameplay, speed calibration and other hardware
+remain unverified. See `VALIDATION.md` for the observations and limits.
 
 ## Why this backend
 
@@ -79,6 +81,27 @@ make all test
 ./build/mouselock --arm --seconds 60   # controlled trial
 ./build/mouselock --arm --gain 0.683 --seconds 60
 ```
+
+For a separately attributed macOS permission entry, build a menu-bar app:
+
+```sh
+python3 build_app.py /absolute/output/path/MouseLock\ HID.app
+```
+
+Local ad-hoc rebuilds change the code hash. In testing, toggling an old enabled
+permission entry or adding the updated app again did **not** replace its old
+code requirement. If the app still reports denied access after a rebuild, quit
+it, reset only its two entries, and re-add that exact app in System Settings →
+Privacy & Security → Accessibility and Input Monitoring:
+
+```sh
+tccutil reset Accessibility dev.lowelodev.mouselock-hid
+tccutil reset ListenEvent dev.lowelodev.mouselock-hid
+```
+
+These commands revoke the old entries; they do not grant access. Do not reset
+all applications. Relaunch the app afterward and verify both reported access
+states are `0` before activating a trial.
 
 `--check` only inspects supported hardware and whether the IOHIDSystem parameter
 connection opens. It does not seize the mouse or post events. Its output also
