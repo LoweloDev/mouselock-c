@@ -93,10 +93,63 @@ every control-loop tick.
 - No kernel extension, driver installation, firmware writes, login item,
   keyboard capture, or network connection.
 
+## Build from source
+
+For users who prefer building locally instead of downloading the release.
+This installs in `~/Applications`; grant permissions to that copy, not another
+one in `/Applications`. Quit and remove any duplicate app before switching.
+
+### Prepare your Mac
+
+Connect the supported mouse **by USB cable**. Open **Terminal** using Spotlight
+(Command-Space, type `Terminal`, press Return).
+
+Install Apple's Command Line Tools:
+
+```sh
+xcode-select --install
+```
+
+Complete the installation dialog before continuing. If Terminal says the tools
+are already installed, continue. Full Xcode is not required.
+
+Check that Python 3 is available:
+
+```sh
+python3 --version
+```
+
+If this prints `Python 3.x.x`, continue. If it is missing, install Python 3 using
+the [official macOS installer](https://www.python.org/downloads/macos/), reopen
+Terminal and check again.
+
+### Build the app
+
+Copy this whole block into Terminal and press Return. Wait for it to finish:
+
+```sh
+git clone https://github.com/LoweloDev/mouselock-c.git "$HOME/Downloads/mouselock-c" &&
+cd "$HOME/Downloads/mouselock-c" &&
+mkdir -p "$HOME/Applications" &&
+python3 build_app.py "$HOME/Applications/MouseLock HID.app"
+```
+
+The build runs its checks and creates **MouseLock HID.app** in your user
+Applications folder. If a command fails, stop and check its error before
+continuing. If `mouselock-c` already exists in Downloads, use the
+[update instructions](#updating-an-existing-installation).
+
+Open the app:
+
+```sh
+open -a "$HOME/Applications/MouseLock HID.app"
+```
+
+
 ## Build and test
 
 Requirements: Apple Command Line Tools and Python 3 for app packaging; see the
-[setup steps](../README.md#1-prepare-your-mac). The executable commands below
+[source setup steps](#prepare-your-mac). The executable commands below
 are for development. Their permissions may be attributed to the launching host;
 use the packaged app for normal play.
 
