@@ -1,160 +1,138 @@
-# MouseLock C — experimental direct HID backend
+# MouseLock C
 
-This branch preserves the original 2023 `main.c` experiments and adds a new,
-opt-in backend in `src/hid_guard.m` for the League of Legends Mac cursor escape
-problem. It is an **experimental backend with a successful short physical
-gameplay test**, not a broadly validated release. The first build worked in
-windowed mode but failed in borderless and was accompanied by reported stutter.
-On 2026-09-17, the user confirmed the revised build worked through the borderless
-test and felt smooth. Longer gameplay, speed calibration and other hardware
-remain unverified. See `VALIDATION.md` for the observations and limits.
+Keep your mouse inside **League of Legends on macOS**, including clicks, while
+the game is in front. MouseLock runs in the menu bar and releases the mouse when
+you hold Command or switch to another app.
 
-## Why this backend
+**Experimental — currently only for the tested wired Attack Shark X3**
+(USB `1d57:fa61`, exact supported report format). Wireless receivers and other
+mice are not supported. A short windowed/borderless test worked smoothly;
+longer play and other setups are not fully validated.
 
-The original Quartz event-tap/polling attempts corrected cursor movement after
-observing it; they did not confine button events together with movement. A click
-could therefore reach the desktop before the correction. The polling version on
-`main` also checks only the main display's horizontal limits, not all four edges
-of the actual game window. Faster polling does not make that sequence atomic;
-the high-level approach also has a documented practical polling-rate limit in
-the tested setup: [LoweloDev's upstream report](https://github.com/mxrlkn/mouselock/issues/17)
-identifies 250 Hz as the highest stable mouse polling rate, with jitter/jumps
-above it. [The implementation experiments](https://github.com/mxrlkn/mouselock/issues/17#issuecomment-1837467796)
-describe jitter from continuous repositioning and escape/sticking with edge-only
-correction; [another user](https://github.com/mxrlkn/mouselock/issues/17#issuecomment-1951406468)
-later confirmed the above-250-Hz failure on a Superlight 2. This is evidence for
-that approach and tested hardware, rather than a universal API callback ceiling.
-The new backend:
+**[EZ setup](#ez-setup)** · **[Advanced guide](docs/ADVANCED.md)** ·
+**[Test results and limitations](VALIDATION.md)**
 
-1. Opens only the supported gaming mouse with `kIOHIDOptionsTypeSeizeDevice`,
-   and only while the actual League game process is foreground.
-2. Decodes each hardware input report, accumulates a linear cursor position,
-   and clamps it to the game window **before** submitting any input.
-3. Sends movement, five buttons and two wheel axes through
-   `IOHIDPostEvent` / `IOHIDSystem`, with absolute bounded coordinates.
-4. Returns the physical mouse on Command, application switch, pause, timeout,
-   sleep, logout notification, or termination.
+## EZ setup
 
-There is **no Quartz event tap, CGEventPost, or CGWarpMouseCursorPosition** in
-this backend. Quartz is only used to read the initial cursor position and window
-geometry. Cocoa provides the menu and foreground-app notifications.
+There is no ready-made app download yet. These steps build the app on your Mac;
+you can copy and paste the commands without editing code. You only need to do
+this setup once, then open the app normally before playing.
 
-Every incoming movement is integrated and clamped, including reversals at an
-edge. Pure motion is submitted by a 240 Hz timer rather than once per report;
-actual timer delivery depends on scheduling. Button and wheel changes flush
-pending motion immediately before their event. This reduces output traffic
-without returning the original hardware stream to normal cursor processing.
-There is no motion-output timer while the device is released. Unchanged status
-titles are not rewritten; permissions and geometry are no longer queried on
-every control-loop tick.
+### 1. Prepare your Mac
 
-## Current scope and limits
+Connect the supported mouse **by USB cable**. Open **Terminal** using Spotlight
+(Command-Space, type `Terminal`, press Return).
 
-- Initially supports the **wired Attack Shark X3**, USB `1d57:fa61`, and only its
-  exact verified seven-byte, no-report-ID descriptor. Other devices are refused
-  before capture. Keyboard and trackpad are not seized.
-- `IOHIDPostEvent` has been deprecated since macOS 11. Opening its connection
-  succeeds on the development Mac; successful event delivery and gameplay still
-  require live verification. It is deliberately isolated as an experiment.
-- The stronger `IOHIDSetCursorBounds` interface requires Apple's privileged HID
-  server connection. Opening that connection failed locally; the ordinary
-  parameter connection must **not** be passed to that function (selector 6 has
-  a different meaning on it).
-- Default linear gain `0.683` is a provisional value estimated from this mouse's
-  desktop input, not a universal conversion from League's sensitivity slider.
-  DPI and macOS settings are not modified. Use `--gain` for controlled tests.
-- In decorated League windows a 32-point title bar is excluded. Other window
-  decorations/scaling require validation. The current actual window dimensions
-  determine the rectangle, not the saved game resolution. The selection accepts
-  raised window levels belonging to the actual game process. Decoration still
-  uses `WindowMode` from `game.cfg`, which can lag a live mode change; title-bar
-  exclusion and camera edge scrolling therefore remain unverified. Window ID,
-  layer and bounds are logged on changes for the next borderless trial.
-- Genuine gameplay, camera edge scrolling, modifier-clicks, additional buttons,
-  scroll direction and rapid focus changes must be checked before routine use.
-- Opening the menu app enables it for League **without a time limit**. Use the
-  `HID` menu to pause or quit, or launch with `--paused`. An optional trial limit
-  is available with `--seconds 1..600`; `--seconds 0` means unlimited. A trial
-  timer starts at activation, including time spent waiting for League. Command
-  releases the mouse; Command-Tab remains available. A separate watchdog thread
-  exits the process if its input/UI loop stalls for over two seconds, so the OS
-  closes the exclusive device handle. A force quit also closes it.
-- After sleep or session deactivation it pauses; re-enable it in the `HID` menu.
-  It does not start at login. Reopening the app after quitting enables it again.
-  A second running app instance is refused to avoid competing device capture.
-- Accessibility (event posting) and Input Monitoring (physical mouse input) are
-  required. The program checks these permissions and never changes them itself.
-- No kernel extension, driver installation, firmware writes, login item,
-  keyboard capture, or network connection.
-
-## Build and test
+Install Apple's Command Line Tools:
 
 ```sh
-make all test
-./build/mouselock --check
-./build/mouselock                     # enabled for League, no time limit
-./build/mouselock --paused            # paused menu-bar app
-./build/mouselock --arm --seconds 60   # controlled trial
-./build/mouselock --arm --gain 0.683 --seconds 60
+xcode-select --install
 ```
 
-For a separately attributed macOS permission entry, build a menu-bar app:
+Complete the installation dialog before continuing. If Terminal says the tools
+are already installed, continue. Full Xcode is not required.
+
+Check that Python 3 is available:
 
 ```sh
-python3 build_app.py /absolute/output/path/MouseLock\ HID.app
+python3 --version
 ```
 
-Launch the packaged app through Finder or Launch Services so macOS evaluates
-the app's own permission entry:
+If this prints `Python 3.x.x`, continue. If it is missing, install Python 3 using
+the [official macOS installer](https://www.python.org/downloads/macos/), reopen
+Terminal and check again.
+
+### 2. Build the app
+
+Copy this whole block into Terminal and press Return. Wait for it to finish:
 
 ```sh
-open -a /absolute/output/path/MouseLock\ HID.app
-# Optional: capture startup/access/capture diagnostics (absolute log paths).
-open -a /absolute/output/path/MouseLock\ HID.app \
-  --stdout /absolute/path/mouselock.log --stderr /absolute/path/mouselock-error.log \
-  --args --arm --seconds 0
+git clone https://github.com/LoweloDev/mouselock-c.git "$HOME/Downloads/mouselock-c" &&
+cd "$HOME/Downloads/mouselock-c" &&
+mkdir -p "$HOME/Applications" &&
+python3 build_app.py "$HOME/Applications/MouseLock HID.app"
 ```
 
-Quit an existing instance before changing its launch route; opening an already
-running app does not restart it. In a live test, directly executing the bundle's
-`Contents/MacOS/mouselock` from the development host returned `post_access=1`
-despite the app's enabled Accessibility entry. Launching the unchanged bundle
-through Launch Services returned both access states as `0` and immediately
-captured the foreground game. Check the launch route before resetting TCC.
-A running process or the startup `mode=enabled` message alone does not prove
-active capture: confirm granted access and a `captured bounds=...` log entry
-while League is in front. Switching away from League normally releases capture.
+The build runs its checks and creates **MouseLock HID.app** in your user
+Applications folder. If a command fails, stop and check its error before
+continuing. If `mouselock-c` already exists in Downloads, use the
+[update instructions](docs/ADVANCED.md#updating-an-existing-installation).
 
-Local ad-hoc rebuilds change the code hash. In testing, toggling an old enabled
-permission entry or adding the updated app again did **not** replace its old
-code requirement. If the app still reports denied access after a rebuild, quit
-it, reset only its two entries, and re-add that exact app in System Settings →
-Privacy & Security → Accessibility and Input Monitoring:
+Open the app:
 
 ```sh
-tccutil reset Accessibility dev.lowelodev.mouselock-hid
-tccutil reset ListenEvent dev.lowelodev.mouselock-hid
+open -a "$HOME/Applications/MouseLock HID.app"
 ```
 
-These commands revoke the old entries; they do not grant access. Do not reset
-all applications. Relaunch the app afterward and verify both reported access
-states are `0` before activating a trial.
+**No window opens.** Look for **HID ○** in the macOS menu bar at the top of the
+screen. Always open the app itself, not the executable inside its bundle.
 
-`--check` only inspects supported hardware and whether the IOHIDSystem parameter
-connection opens. It does not seize the mouse or post events. Its output also
-includes the permission states (`0` granted, `1` denied, `2` unknown).
+### 3. Allow the two macOS permissions
 
-`build/mouse-diagnose 120` is a separate passive diagnostic: mouse-only HID input
-and a **listen-only** Quartz tap are counted for comparison. It cannot lock the
-cursor. It logs aggregated rates/deltas, never key contents. Intervals below
-100 ms exclude idle gaps; callback counts are not a certified device polling
-rate. Context changes and observer overhead must be considered. Quartz timestamp
-ages are not reported because the clock domains were not validated.
+1. Open **System Settings → Privacy & Security → Accessibility**
+   (German: **Datenschutz & Sicherheit → Bedienungshilfen**).
+2. Add **MouseLock HID.app** with the **+** button and enable its switch.
+   In the file picker, press **Command-Shift-G**, paste `~/Applications`,
+   press Return and select the app. Unlock with Touch ID or your Mac password
+   if macOS asks.
+3. Repeat in **Privacy & Security → Input Monitoring**
+   (German: **Eingabeüberwachung**), enabling the **same app**.
+4. Quit MouseLock via **HID → Beenden**, then open it again with the command above.
 
-## Primary references
+Accessibility lets MouseLock send the confined mouse input. Input Monitoring
+lets it read the physical mouse. MouseLock does not capture keyboard input.
+If macOS asks you to quit and reopen the app, do so.
 
-- [IOHIDDeviceOpen](https://developer.apple.com/documentation/iokit/1588670-iohiddeviceopen)
-- [Exclusive device access](https://developer.apple.com/documentation/iokit/1556660-anonymous/kiohidoptionstypeseizedevice)
-- [Apple IOHIDSystem source](https://github.com/apple-oss-distributions/IOHIDFamily/blob/main/IOHIDSystem/IOHIDSystem.cpp)
-- [Apple user-client dispatch and entitlement checks](https://github.com/apple-oss-distributions/IOHIDFamily/blob/main/IOHIDSystem/IOHIDUserClient.cpp)
-- [Apple IOHIDLib implementation](https://github.com/apple-oss-distributions/IOKitUser/blob/main/hidsystem.subproj/IOHIDLib.c)
+### 4. Play
+
+Start a **Practice Tool** game first and try quick movements and clicks along
+all four edges. **Borderless is recommended** for this version; the Dock can
+still react to hovering in windowed mode.
+
+MouseLock starts enabled, without a time limit. It captures only while the
+actual League match is in front, not the launcher or desktop:
+
+| Menu indicator / action | Meaning |
+| --- | --- |
+| **HID ●** | The mouse is captured. |
+| **HID ○** | The mouse is released: waiting for League, paused, or unable to capture. Open the menu for status. |
+| Hold **Command** | Temporarily release the mouse. |
+| **Command-Tab** | Switch out of the game and release the mouse. |
+| **MouseLock pausieren** | Pause capture. |
+| **MouseLock aktivieren** | Enable capture again. |
+| **Beenden** | Quit MouseLock. |
+
+The app's menu labels are currently German. After sleep or a session switch,
+use **MouseLock aktivieren** to resume. There is no automatic start at login:
+open **MouseLock HID.app** before your next session. In Finder, Command-Shift-G
+and `~/Applications` takes you to it.
+
+## If something does not work
+
+- **HID stays ○ in a match:** Check the menu status, supported wired mouse,
+  both permissions, and that capture is enabled. Quit and reopen the app normally.
+  A launcher window alone does not activate capture.
+- **Permissions are enabled but it still fails after rebuilding:** Follow the
+  [Advanced permission troubleshooting](docs/ADVANCED.md#permissions-after-rebuilding).
+- **Mouse stops responding:** Hold Command to release it. Use the trackpad to
+  choose **HID → Beenden** if needed. Alternatively, open **Activity Monitor**,
+  search for `mouselock` and quit/force-quit that process. If the mouse still does
+  not respond after the app has stopped, unplug and reconnect its USB cable or
+  receiver. This symptom alone does not establish its cause.
+- **Movement feels different:** Sensitivity is not calibrated for every setup.
+  MouseLock uses a provisional fixed movement scale; it does not change your
+  mouse DPI or macOS settings. See `--gain` in the Advanced guide.
+- **Missed abilities or champion “teleporting”:** These remain unresolved;
+  MouseLock is not a confirmed fix for them.
+
+## Why this approach works differently
+
+The old approach corrected the cursor **after** macOS moved it. At high mouse
+polling rates, it could escape or send a click to the desktop before correction;
+[the original reports document a practical 250 Hz limit in the tested setup](https://github.com/mxrlkn/mouselock/issues/17).
+
+The new backend takes exclusive control of the supported mouse while League is
+in front and bounds movement **before** sending movement and clicks to macOS.
+Batched movement output avoids flooding the system, and raised borderless game
+windows are recognized. See the [Advanced guide](docs/ADVANCED.md) for the
+implementation, commands and evidence behind these changes.
