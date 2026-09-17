@@ -25,8 +25,8 @@ with (app / "Contents" / "Info.plist").open("wb") as handle:
         "CFBundleDisplayName": "MouseLock HID",
         "CFBundleExecutable": "mouselock",
         "CFBundlePackageType": "APPL",
-        "CFBundleVersion": "2",
-        "CFBundleShortVersionString": "0.2.0",
+        "CFBundleVersion": "3",
+        "CFBundleShortVersionString": "0.3.0",
         "LSUIElement": True,
         "NSInputMonitoringUsageDescription": "Read only the gaming mouse HID reports while testing League cursor confinement.",
     }, handle)
@@ -44,4 +44,5 @@ for path in [app, *app.rglob("*")]:
 subprocess.run(["codesign", "--force", "--sign", "-", str(app)], check=True)
 subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], check=True)
 print(app)
-print("Starts paused. Rebuilding changes the ad-hoc signature; macOS may require renewed permissions.")
+print("Starts enabled for League, without a timeout. Use --paused or --seconds N for testing.")
+print("Rebuilding changes the ad-hoc signature; macOS may require renewed permissions.")

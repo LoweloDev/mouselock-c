@@ -61,12 +61,16 @@ every control-loop tick.
   layer and bounds are logged on changes for the next borderless trial.
 - Genuine gameplay, camera edge scrolling, modifier-clicks, additional buttons,
   scroll direction and rapid focus changes must be checked before routine use.
-- The menu app starts paused. Each activation defaults to a 60-second limit,
-  configurable with `--seconds`. The timer starts at activation, including time
-  spent waiting for League. Command
+- Opening the menu app enables it for League **without a time limit**. Use the
+  `HID` menu to pause or quit, or launch with `--paused`. An optional trial limit
+  is available with `--seconds 1..600`; `--seconds 0` means unlimited. A trial
+  timer starts at activation, including time spent waiting for League. Command
   releases the mouse; Command-Tab remains available. A separate watchdog thread
   exits the process if its input/UI loop stalls for over two seconds, so the OS
   closes the exclusive device handle. A force quit also closes it.
+- After sleep or session deactivation it pauses; re-enable it in the `HID` menu.
+  It does not start at login. Reopening the app after quitting enables it again.
+  A second running app instance is refused to avoid competing device capture.
 - Accessibility (event posting) and Input Monitoring (physical mouse input) are
   required. The program checks these permissions and never changes them itself.
 - No kernel extension, driver installation, firmware writes, login item,
@@ -77,7 +81,8 @@ every control-loop tick.
 ```sh
 make all test
 ./build/mouselock --check
-./build/mouselock                     # paused menu-bar app
+./build/mouselock                     # enabled for League, no time limit
+./build/mouselock --paused            # paused menu-bar app
 ./build/mouselock --arm --seconds 60   # controlled trial
 ./build/mouselock --arm --gain 0.683 --seconds 60
 ```

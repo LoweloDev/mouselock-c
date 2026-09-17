@@ -6,6 +6,7 @@
 #include <stdatomic.h>
 #include <signal.h>
 #include <pthread.h>
+#include <errno.h>
 #include "motion.h"
 
 // IOKit-only movement/output path. Quartz is used ONLY to read the starting
@@ -21,11 +22,11 @@ static const unsigned char supportedDescriptor[]={
 static io_connect_t output;
 static IOHIDDeviceRef mouse;
 static UInt8 reportBuffer[256];
-static bool seized, enabled, failed, quitting;
+static bool seized, enabled=true, failed, quitting;
 static MLBounds rect;
 static MLMotion motion;
 static CFRunLoopTimerRef motionTimer;
-static double gain=.683, limitSeconds=60, started, lastDown[5];
+static double gain=.683, limitSeconds=0, started, lastDown[5];
 static int clicks[5];
 static uint8_t buttons;
 static uint64_t reports, clamped, posts, errors;
@@ -39,6 +40,11 @@ static double lastPermissionCheck=-10, lastGeometryCheck=-10, lastStatusUpdate=-
 static uint32_t windowID;
 static int windowLayer;
 static double now(void) {return (double)mach_absolute_time()*timebase.numer/timebase.denom/1e9;}
+static bool numberArgument(const char *text,double *value) {
+    char *end=NULL;errno=0;double parsed=strtod(text,&end);
+    if(end==text||*end||errno==ERANGE||!isfinite(parsed))return false;
+    *value=parsed;return true;
+}
 static void signalStop(int sig) {(void)sig;stopRequested=1;}
 static void *watchdog(void *unused) {
     (void)unused;
@@ -156,9 +162,9 @@ static bool capture(void) {
 - (void)applicationDidFinishLaunching:(NSNotification*)n {
     (void)n;self.item=[NSStatusBar.systemStatusBar statusItemWithLength:NSVariableStatusItemLength];self.item.button.title=@"HID ○";
     NSMenu *menu=[NSMenu new];self.stateItem=[menu addItemWithTitle:@"Vorbereitung" action:nil keyEquivalent:@""];
-    self.toggleItem=[menu addItemWithTitle:@"Test aktivieren" action:@selector(toggle:) keyEquivalent:@""];self.toggleItem.target=self;
+    self.toggleItem=[menu addItemWithTitle:@"MouseLock aktivieren" action:@selector(toggle:) keyEquivalent:@""];self.toggleItem.target=self;
     [menu addItemWithTitle:@"Command halten: Freigeben" action:nil keyEquivalent:@""];
-    [menu addItemWithTitle:[NSString stringWithFormat:@"Automatisches Ende nach %.0f Sekunden",limitSeconds] action:nil keyEquivalent:@""];
+    [menu addItemWithTitle:limitSeconds>0?[NSString stringWithFormat:@"Automatisches Ende nach %.0f Sekunden",limitSeconds]:@"Ohne Zeitlimit · nur in League" action:nil keyEquivalent:@""];
     [menu addItem:NSMenuItem.separatorItem];
     NSMenuItem *quit=[menu addItemWithTitle:@"Beenden" action:@selector(quit:) keyEquivalent:@"q"];quit.target=self;self.item.menu=menu;
     [NSWorkspace.sharedWorkspace.notificationCenter addObserver:self selector:@selector(focus:) name:NSWorkspaceDidActivateApplicationNotification object:nil];
@@ -218,7 +224,7 @@ static bool capture(void) {
     }else releaseMouse();
     NSString *icon=seized?@"HID ●":@"HID ○";
     if(![self.item.button.title isEqualToString:icon])self.item.button.title=icon;
-    NSString *toggle=enabled?@"Test pausieren":[NSString stringWithFormat:@"%.0f-Sekunden-Test aktivieren",limitSeconds];
+    NSString *toggle=enabled?@"MouseLock pausieren":limitSeconds>0?[NSString stringWithFormat:@"%.0f-Sekunden-Test aktivieren",limitSeconds]:@"MouseLock aktivieren";
     if(![self.toggleItem.title isEqualToString:toggle])self.toggleItem.title=toggle;
     if(t-lastStatusUpdate>=1) {
         lastStatusUpdate=t;
@@ -236,11 +242,16 @@ int main(int argc,char **argv) {@autoreleasepool {
     for(int i=1;i<argc;i++) {
         if(!strcmp(argv[i],"--check"))check=true;
         else if(!strcmp(argv[i],"--arm"))enabled=true;
-        else if(!strcmp(argv[i],"--gain")&&i+1<argc)gain=atof(argv[++i]);
-        else if(!strcmp(argv[i],"--seconds")&&i+1<argc)limitSeconds=atof(argv[++i]);
-        else {fprintf(stderr,"Usage: mouselock [--check] [--arm] [--gain N] [--seconds 1..600]\n");return 2;}
+        else if(!strcmp(argv[i],"--paused"))enabled=false;
+        else if(!strcmp(argv[i],"--gain")&&i+1<argc){if(!numberArgument(argv[++i],&gain))return 2;}
+        else if(!strcmp(argv[i],"--seconds")&&i+1<argc){if(!numberArgument(argv[++i],&limitSeconds))return 2;}
+        else {fprintf(stderr,"Usage: mouselock [--check] [--paused|--arm] [--gain N] [--seconds 0|1..600]\n");return 2;}
     }
-    if(!isfinite(gain)||gain<=0||gain>10||!isfinite(limitSeconds)||limitSeconds<1||limitSeconds>600)return 2;
+    if(gain<=0||gain>10||limitSeconds<0||(limitSeconds>0&&limitSeconds<1)||limitSeconds>600)return 2;
+    if(!check&&[NSBundle.mainBundle.bundleIdentifier isEqualToString:@"dev.lowelodev.mouselock-hid"]) {
+        for(NSRunningApplication *running in [NSRunningApplication runningApplicationsWithBundleIdentifier:@"dev.lowelodev.mouselock-hid"])
+            if(running.processIdentifier!=getpid()){fprintf(stderr,"MouseLock HID is already running. Use its menu-bar controls.\n");return 1;}
+    }
     setvbuf(stdout,NULL,_IOLBF,0);mach_timebase_info(&timebase);
     signal(SIGINT,signalStop);signal(SIGTERM,signalStop);
     io_service_t service=IOServiceGetMatchingService(kIOMainPortDefault,IOServiceMatching(kIOHIDSystemClass));
@@ -249,6 +260,7 @@ int main(int argc,char **argv) {@autoreleasepool {
     printf("IOHIDSystem=0x%x supported_mouse=%d post_access=%d listen_access=%d\n",opened,found,IOHIDCheckAccess(kIOHIDRequestTypePostEvent),IOHIDCheckAccess(kIOHIDRequestTypeListenEvent));
     if(check){if(mouse)CFRelease(mouse);if(output)IOServiceClose(output);return opened==0&&found?0:1;}
     if(opened!=0||!found){fprintf(stderr,"Supported wired mouse or IOHIDSystem connection unavailable.\n");return 1;}
+    printf("mode=%s limit_seconds=%.0f (0=unlimited)\n",enabled?"enabled":"paused",limitSeconds);
     atomic_store(&heartbeat,mach_absolute_time());pthread_t thread;int r=pthread_create(&thread,NULL,watchdog,NULL);if(r)return 1;pthread_detach(thread);
     started=now();NSApplication *app=NSApplication.sharedApplication;[app setActivationPolicy:NSApplicationActivationPolicyAccessory];HIDGuard *delegate=[HIDGuard new];app.delegate=delegate;[app run];
     atomic_store(&watchdogDone,true);releaseMouse();if(mouse)CFRelease(mouse);IOServiceClose(output);return 0;

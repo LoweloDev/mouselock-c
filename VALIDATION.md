@@ -61,6 +61,22 @@
 - At normal game exit, device release succeeded: 69,331 reports, 12,417 clamped
   candidate positions, 18,330 output posts, zero reported API errors. The helper
   was then terminated; no test or diagnosis process was left running.
+- Additional user feedback: the macOS Dock remains hoverable in windowed mode.
+  This is a known remaining limitation; borderless is the user's preferred mode.
+
+## Normal play mode, 0.3.0
+
+- User requested that the working helper stay enabled for actual gameplay.
+  Normal launch now enables League-only capture without a trial timeout.
+- `--paused` keeps manual paused startup available; `--seconds 1..600` preserves
+  bounded trials and `--seconds 0` explicitly chooses no timeout.
+- The input/output backend, gain, motion batching and geometry are unchanged
+  from the successful 0.2.0 trial. Command/focus release, watchdog, sleep pause,
+  menu pause/quit and permission checks remain in place. No login item is added.
+- Numeric options now reject malformed/non-finite strings rather than allowing
+  an invalid duration to parse as unlimited. Invalid durations were checked.
+- Build, boundary/motion tests and static analysis passed. Long-session behavior
+  remains to be assessed during normal play.
 
 ## Not established by those checks
 
